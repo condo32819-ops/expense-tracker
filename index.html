@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Expenses</title>
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Expenses">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#0f1115;--card:#1a1d24;--card2:#232731;--text:#f2f4f8;--muted:#8b93a3;--accent:#3ddc97;--danger:#ff5d5d;
+--food:#ff9f43;--ent:#a78bfa;--lodg:#4dabf7;--misc:#94a3b8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{padding:calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+.top{text-align:center;padding:4px 0 10px}
+.lbl{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+#grand{font-size:46px;font-weight:700;letter-spacing:-.02em;margin:2px 0}
+#grandCop{font-size:14px;color:var(--muted)}
+#rate{display:inline-block;margin-top:8px;font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--card2);border-radius:999px;padding:6px 12px}
+#rate.manual{color:#ffd166;border-color:#5a4a1a}
+.entry{background:var(--card);border-radius:18px;padding:12px;margin-top:8px}
+.row{display:flex;gap:10px;align-items:stretch}
+#amt{flex:1;min-width:0;font-size:34px;font-weight:600;background:var(--card2);color:var(--text);border:2px solid transparent;border-radius:14px;padding:10px 14px;outline:none}
+#amt:focus{border-color:var(--accent)}
+.cur{display:flex;flex-direction:column;background:var(--card2);border-radius:14px;overflow:hidden}
+.cur button{flex:1;border:0;background:none;color:var(--muted);font-size:16px;font-weight:700;padding:0 16px;min-height:34px}
+.cur button.on{background:var(--accent);color:#06281a}
+#preview{font-size:14px;color:var(--muted);min-height:20px;margin:8px 4px 2px}
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.cat{border:0;border-radius:16px;min-height:88px;padding:12px;color:#0b0d10;text-align:left;display:flex;flex-direction:column;justify-content:space-between;font-family:inherit;transition:transform .08s}
+.cat:active{transform:scale(.96)}
+.cat .n{font-size:20px;font-weight:700}
+.cat .t{font-size:16px;font-weight:600;opacity:.8}
+.cat[data-c=Food]{background:var(--food)}.cat[data-c=Entertainment]{background:var(--ent)}
+.cat[data-c=Lodging]{background:var(--lodg)}.cat[data-c=Misc]{background:var(--misc)}
+.cat.flash{outline:4px solid #fff}
+h2{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:22px 4px 8px;display:flex;justify-content:space-between}
+#list{list-style:none;margin:0;padding:0}
+#list li{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:10px 6px 10px 12px;margin-bottom:6px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.li-main{flex:1;min-width:0}
+.li-main .a{font-size:17px;font-weight:600}
+.li-main .s{font-size:13px;color:var(--muted)}
+.li-usd{font-size:17px;font-weight:600}
+.x{border:0;background:var(--card2);color:var(--muted);width:44px;height:44px;border-radius:12px;font-size:20px;flex:none}
+.empty{color:var(--muted);text-align:center;padding:18px;font-size:15px}
+#reset{display:block;width:100%;margin-top:18px;border:1px solid #4a2626;background:none;color:var(--danger);border-radius:14px;min-height:50px;font-size:16px;font-weight:600}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%) translateY(80px);background:var(--accent);color:#06281a;font-weight:700;padding:12px 20px;border-radius:999px;transition:transform .2s;pointer-events:none;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="lbl">Total spent</div>
+  <div id="grand">$0.00</div>
+  <div id="grandCop">COP 0</div>
+  <button id="rate" type="button">Rate loading…</button>
+</div>
+
+<div class="entry">
+  <div class="row">
+    <input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount">
+    <div class="cur">
+      <button type="button" data-cur="COP">COP</button>
+      <button type="button" data-cur="USD">USD</button>
+    </div>
+  </div>
+  <div id="preview"></div>
+  <div class="cats">
+    <button class="cat" data-c="Food"><span class="n">Food</span><span class="t" data-tot="Food">$0.00</span></button>
+    <button class="cat" data-c="Entertainment"><span class="n">Entertainment</span><span class="t" data-tot="Entertainment">$0.00</span></button>
+    <button class="cat" data-c="Lodging"><span class="n">Lodging</span><span class="t" data-tot="Lodging">$0.00</span></button>
+    <button class="cat" data-c="Misc"><span class="n">Misc</span><span class="t" data-tot="Misc">$0.00</span></button>
+  </div>
+</div>
+
+<h2><span>Entries</span><span id="count"></span></h2>
+<ul id="list"></ul>
+<button id="reset" type="button">Start fresh</button>
+<div id="toast"></div>
+
+<script>
+(function(){
+const K={e:'exp.entries',cur:'exp.cur',rate:'exp.rate'};
+const COLORS={Food:'#ff9f43',Entertainment:'#a78bfa',Lodging:'#4dabf7',Misc:'#94a3b8'};
+const $=s=>document.querySelector(s);
+const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let entries=load(K.e,[]);
+let cur=load(K.cur,'COP');
+// rate: {cop: number (COP per 1 USD), date:'YYYY-MM-DD', manual:bool, src}
+let rate=load(K.rate,null);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fmtUSD=n=>'$'+(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtCOP=n=>'COP '+Math.round(n).toLocaleString('en-US');
+const fmtRate=n=>Math.round(n).toLocaleString('en-US');
+
+function parseAmt(s,c){
+  s=String(s||'').trim().replace(/\s/g,'');
+  if(!s)return NaN;
+  if(c==='COP'){ s=s.replace(/[.,]/g,''); }        // pesos have no cents: 45.000 / 45,000 / 45000 all = 45000
+  else { if(s.indexOf('.')<0) s=s.replace(',','.'); s=s.replace(/,/g,''); }
+  const n=parseFloat(s); return isFinite(n)&&n>0?n:NaN;
+}
+function toUSD(a,c){ if(c==='USD')return a; return rate&&rate.cop?a/rate.cop:NaN; }
+
+function setCur(c){cur=c;save(K.cur,c);document.querySelectorAll('.cur button').forEach(b=>b.classList.toggle('on',b.dataset.cur===c));preview();}
+function preview(){
+  const a=parseAmt($('#amt').value,cur);
+  if(isNaN(a)){$('#preview').textContent='';return}
+  if(cur==='COP'){const u=toUSD(a,'COP');$('#preview').textContent=fmtCOP(a)+(isNaN(u)?'':'  ≈  '+fmtUSD(u));}
+  else $('#preview').textContent=fmtUSD(a)+(rate&&rate.cop?'  ≈  '+fmtCOP(a*rate.cop):'');
+}
+function renderRate(){
+  const b=$('#rate');
+  if(!rate||!rate.cop){b.textContent='No rate yet – tap to set';b.classList.remove('manual');return}
+  b.textContent='$1 = '+fmtRate(rate.cop)+' COP · '+(rate.manual?'manual':(rate.date===today()?'today':'cached '+rate.date));
+  b.classList.toggle('manual',!!rate.manual);
+}
+function render(){
+  const tot={Food:0,Entertainment:0,Lodging:0,Misc:0};let g=0;
+  entries.forEach(e=>{tot[e.category]=(tot[e.category]||0)+e.usd;g+=e.usd});
+  $('#grand').textContent=fmtUSD(g);
+  $('#grandCop').textContent=rate&&rate.cop?'≈ '+fmtCOP(g*rate.cop):'';
+  document.querySelectorAll('[data-tot]').forEach(el=>el.textContent=fmtUSD(tot[el.dataset.tot]||0));
+  $('#count').textContent=entries.length?entries.length+(entries.length===1?' item':' items'):'';
+  const ul=$('#list');ul.innerHTML='';
+  if(!entries.length){ul.innerHTML='<li class="empty" style="display:block">No expenses yet. Type an amount, tap a category.</li>';}
+  entries.slice().sort((a,b)=>b.ts-a.ts).forEach(e=>{
+    const d=new Date(e.ts);
+    const when=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const li=document.createElement('li');
+    li.innerHTML='<span class="dot"></span><div class="li-main"><div class="a"></div><div class="s"></div></div><div class="li-usd"></div><button class="x" aria-label="Delete">✕</button>';
+    li.querySelector('.dot').style.background=COLORS[e.category]||'#888';
+    li.querySelector('.a').textContent=e.currency==='COP'?fmtCOP(e.amount):fmtUSD(e.amount);
+    li.querySelector('.s').textContent=e.category+' · '+when;
+    li.querySelector('.li-usd').textContent=fmtUSD(e.usd);
+    li.querySelector('.x').onclick=()=>{ if(confirm('Delete '+e.category+' '+(e.currency==='COP'?fmtCOP(e.amount):fmtUSD(e.amount))+'?')){entries=entries.filter(x=>x.id!==e.id);save(K.e,entries);render();} };
+    ul.appendChild(li);
+  });
+  renderRate();preview();
+}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),1300);}
+
+function add(cat,btn){
+  const a=parseAmt($('#amt').value,cur);
+  if(isNaN(a)){toast('Enter an amount first');$('#amt').focus();return}
+  if(cur==='COP'&&!(rate&&rate.cop)){toast('Set a COP rate first');setRateManual();return}
+  const r=cur==='COP'?rate.cop:(rate&&rate.cop)||null;
+  const usd=cur==='USD'?a:a/rate.cop;
+  entries.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),amount:a,currency:cur,rate:r,usd:Math.round(usd*100)/100,category:cat,ts:Date.now()});
+  save(K.e,entries);
+  $('#amt').value='';
+  btn.classList.add('flash');setTimeout(()=>btn.classList.remove('flash'),250);
+  if(navigator.vibrate)navigator.vibrate(15);
+  toast('Added '+fmtUSD(usd)+' · '+cat);
+  render();
+}
+function setRateManual(){
+  const cur0=rate&&rate.cop?Math.round(rate.cop):'';
+  const v=prompt('COP per 1 USD (leave blank to use the live rate):',cur0);
+  if(v===null)return;
+  const n=parseFloat(String(v).replace(/[^\d.]/g,''));
+  if(!String(v).trim()){ if(rate)rate.manual=false; save(K.rate,rate); fetchRate(true); render(); return }
+  if(isFinite(n)&&n>100){rate={cop:n,date:today(),manual:true,src:'manual'};save(K.rate,rate);render();toast('Rate set');}
+  else toast('Invalid rate');
+}
+function fetchRate(force){
+  if(rate&&rate.manual&&!force)return;
+  if(!force&&rate&&rate.date===today())return;
+  fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'}).then(r=>r.json()).then(d=>{
+    const c=d&&d.rates&&d.rates.COP; if(!c)return;
+    if(rate&&rate.manual)return;
+    rate={cop:c,date:today(),manual:false,src:'open.er-api.com'};save(K.rate,rate);render();
+  }).catch(()=>{});
+}
+
+document.querySelectorAll('.cur button').forEach(b=>b.onclick=()=>setCur(b.dataset.cur));
+document.querySelectorAll('.cat').forEach(b=>b.onclick=()=>add(b.dataset.c,b));
+$('#amt').addEventListener('input',preview);
+$('#amt').addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault()});
+$('#rate').onclick=setRateManual;
+$('#reset').onclick=()=>{ if(!entries.length){toast('Nothing to clear');return} if(confirm('Start fresh? This deletes all '+entries.length+' entries.')){entries=[];save(K.e,entries);render();toast('Cleared');} };
+setCur(cur);render();fetchRate(false);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)fetchRate(false)});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
